@@ -1,0 +1,24 @@
+; Engine configuration file.
+; It is best edited using the Godot editor UI.
+
+config_version=5
+
+[application]
+
+config/name="Dimensions Collide"
+run/main_scene="res://scenes/main/main.tscn"
+
+[audio]
+
+general/text_to_speech=true
+
+[autoload]
+
+AccessibilityManager="*res://scripts/accessibility/accessibility_manager.gd"
+
+[display]
+
+window/size/viewport_width=960
+window/size/viewport_height=540
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
