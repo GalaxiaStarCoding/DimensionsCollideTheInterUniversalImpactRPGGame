@@ -1,0 +1,89 @@
+extends CanvasLayer
+
+# LogoSwitcher.gd
+# Attach this script to a CanvasLayer or Control node.
+# Configure `logo_paths` with the resource paths to your logo textures.
+
+# Exported variables
+export(Array, String) var logo_paths = []
+export(float) var display_time := 2.0
+export(float) var fade_time := 0.6
+
+var _logos = []
+var _current_index := -1
+var _sprite_a: TextureRect
+var _sprite_b: TextureRect
+var _using_a := true
+
+func _ready():
+    # Create two TextureRect nodes for crossfading
+    _sprite_a = TextureRect.new()
+    _sprite_b = TextureRect.new()
+    for s in [_sprite_a, _sprite_b]:
+        s.expand = true
+        s.stretch_mode = TextureRect.STRETCH_SCALE
+        s.anchor_left = 0
+        s.anchor_top = 0
+        s.anchor_right = 1
+        s.anchor_bottom = 1
+        s.margin_left = 0
+        s.margin_top = 0
+        s.margin_right = 0
+        s.margin_bottom = 0
+        s.modulate = Color(1,1,1,0) # start invisible
+        add_child(s)
+
+    # Preload textures
+    for p in logo_paths:
+        var tex = load(p) if p != "" else null
+        _logos.append(tex)
+
+    if _logos.size() == 0:
+        push_error("LogoSwitcher: No logos configured in `logo_paths`.")
+        return
+
+    _current_index = -1
+    _using_a = true
+    _next_logo()
+
+func _next_logo():
+    _current_index = (_current_index + 1) % _logos.size()
+    var next_tex = _logos[_current_index]
+    if next_tex == null:
+        # Skip null entries
+        call_deferred("_next_logo")
+        return
+
+    var incoming = _sprite_a if _using_a else _sprite_b
+    var outgoing = _sprite_b if _using_a else _sprite_a
+
+    incoming.texture = next_tex
+    incoming.modulate = Color(1,1,1,0)
+    incoming.raise()
+
+    # Animate fade in/out
+    var tween = get_tree().create_tween()
+    tween.tween_property(incoming, "modulate:a", 1.0, fade_time).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+    tween.tween_property(outgoing, "modulate:a", 0.0, fade_time).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+    tween.then()
+    tween.pause()
+
+    # After fade completes, wait display_time then show next
+    tween.set_parallel(false)
+    tween.play()
+
+    # Use a timer via await
+    await(get_tree().create_timer(fade_time).timeout)
+    # Keep displayed for display_time
+    await(get_tree().create_timer(display_time).timeout)
+
+    _using_a = !_using_a
+    call_deferred("_next_logo")
+
+# Optional: call this to jump to a specific index
+func show_index(idx: int):
+    if idx < 0 or idx >= _logos.size():
+        return
+    _current_index = idx - 1
+    _using_a = true
+    call_deferred("_next_logo")
