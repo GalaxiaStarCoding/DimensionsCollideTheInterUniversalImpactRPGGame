@@ -1,5 +1,7 @@
 extends Node
 
+class_name AccessibilityManager
+
 signal announcement_made(message: String)
 
 var speech_enabled := true

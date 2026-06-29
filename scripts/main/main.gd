@@ -75,7 +75,7 @@ func _sync_player_visual() -> void:
 
 
 func _current_location_text() -> String:
-	var description := TILE_DESCRIPTIONS.get(_cell_key(player_cell), "an empty part of the room.")
+	var description: String = TILE_DESCRIPTIONS.get(_cell_key(player_cell), "an empty part of the room.")
 	return _short_position_text() + " You are at " + description
 
 
