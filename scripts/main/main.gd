@@ -17,9 +17,43 @@ var player_cell := Vector2i(2, 2)
 @onready var player_marker: ColorRect = $Player
 @onready var status_label: Label = $Hud/StatusLabel
 
+# Local reference to the AccessibilityManager singleton (or a fallback stub)
+var AccessibilityManagerRef: Node = null
+
+# A small stub to use when the AccessibilityManager autoload isn't present.
+# It implements the same API used by this script so the game won't break
+# in editor or at runtime if the project hasn't been configured yet.
+class AccessibilityStub:
+	extends Node
+	signal announcement_made(message)
+	var last_announcement: String = ""
+
+	func announce(message: String) -> void:
+		last_announcement = message
+		emit_signal("announcement_made", message)
+		print("[AccessibilityManager stub] " + message)
+
+	func repeat_last_announcement() -> void:
+		if last_announcement == "":
+			announce("No messages to repeat.")
+		else:
+			announce(last_announcement)
+
 
 func _ready() -> void:
-	AccessibilityManager.announcement_made.connect(_on_announcement_made)
+	# Use Engine.has_singleton/get_singleton to avoid referencing an undefined global
+	if Engine.has_singleton("AccessibilityManager"):
+		AccessibilityManagerRef = Engine.get_singleton("AccessibilityManager")
+	else:
+		AccessibilityManagerRef = AccessibilityStub.new()
+		# Keep the stub in the scene tree so it can emit signals normally
+		add_child(AccessibilityManagerRef)
+
+	# Connect the announcement signal if available
+	if AccessibilityManagerRef.has_signal("announcement_made"):
+		# Use Callable for Godot 4 style safe connections
+		AccessibilityManagerRef.connect("announcement_made", Callable(self, "_on_announcement_made"))
+
 	_sync_player_visual()
 	announce_current_location("Dimensions Collide prototype loaded. ")
 
@@ -43,21 +77,21 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_ENTER, KEY_SPACE:
 			_inspect_current_tile()
 		KEY_H:
-			AccessibilityManager.announce(_help_text())
+			AccessibilityManagerRef.announce(_help_text())
 		KEY_R:
-			AccessibilityManager.repeat_last_announcement()
+			AccessibilityManagerRef.repeat_last_announcement()
 		KEY_ESCAPE:
 			get_tree().quit()
 
 
 func announce_current_location(prefix := "") -> void:
-	AccessibilityManager.announce(prefix + _current_location_text())
+	AccessibilityManagerRef.announce(prefix + _current_location_text())
 
 
 func _try_move(direction: Vector2i) -> void:
 	var next_cell := player_cell + direction
 	if not _cell_is_inside_room(next_cell):
-		AccessibilityManager.announce("Wall. " + _short_position_text())
+		AccessibilityManagerRef.announce("Wall. " + _short_position_text())
 		return
 
 	player_cell = next_cell
@@ -66,7 +100,7 @@ func _try_move(direction: Vector2i) -> void:
 
 
 func _inspect_current_tile() -> void:
-	AccessibilityManager.announce("Inspecting. " + _current_location_text())
+	AccessibilityManagerRef.announce("Inspecting. " + _current_location_text())
 
 
 func _sync_player_visual() -> void:
